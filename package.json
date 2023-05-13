@@ -4,6 +4,7 @@
   "description": "\"Book library smart contract\"",
   "main": "index.js",
   "scripts": {
+    "npx" : "npx",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "zhkelchev",
