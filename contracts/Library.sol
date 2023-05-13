@@ -6,11 +6,17 @@ import "hardhat/console.sol";
 
 contract Library is Ownable {
 
-    //define storage
-    Book[] public books; //all books
+    //books data
+    uint public booksCount;
+    mapping(uint => Book) public books; 
+    //user data
     mapping(address => UserLog) usersLog; //keep track of every transaction that given user have
-    mapping(uint => address[]) booksHistory; //keep track of every user that borrow given book
-
+    //book history
+    mapping(uint => mapping(address => bool)) isUserInBooksHistory; //keep track of every user that borrow given book
+    mapping(uint =>address[]) booksHistory;
+    //availableBooks
+    mapping(uint => bool) public availableBooks; //todo: keep track of available books without loop
+    
     //book data
     struct Book {
         string name;
@@ -20,8 +26,9 @@ contract Library is Ownable {
 
     //user current state + history
     struct UserLog {
+        mapping(uint => uint) currentBooksMapping; //maps bookId=> index in currentBooks, used to pop items without loop
         uint[] currentBooks; //currently borrowed books
-        uint[] borrowedBooks; //keep track of all books that was borrowed
+        uint[] borrowedBooks; //todo: keep track of all books that was borrowed (without loop)
         mapping(uint => HistoryItem[]) booksLog; //log timestamps foreach book borrowed/returned
     }
 
@@ -36,71 +43,70 @@ contract Library is Ownable {
     event BookReturned(uint _bookId, address _user);
 
     constructor() {
-        books.push(Book("test0", "test", 1));
-        books.push(Book("test1", "test", 1));
-        books.push(Book("test2", "test", 1));
-        books.push(Book("test3", "test", 4));
+        booksCount=0;
     }
 
     //public state functions
     function addBook( string calldata _name, string calldata _author, uint8 _copies) external onlyOwner {
-        books.push(Book(_name, _author, _copies));
-        emit BookAdded((books.length-1), _copies);
+        books[booksCount] = Book(_name, _author, _copies);
+        availableBooks[booksCount] = true;
+        emit BookAdded((booksCount), _copies);
+        booksCount++;
     }
 
-    function borrowBook(uint _bookId) external doesntHasBook(_bookId) {
-        require((books.length - 1) >= _bookId, "This book doesn't exist!");
+    function borrowBook(uint _bookId) external bookExist(_bookId) doesntHasBook(_bookId) {
         //check if book is available
         require(books[_bookId].copies>0, "This book is not available!");
-        UserLog storage senderLog = usersLog[msg.sender];
-
         //update copies
         books[_bookId].copies--;
         //update book history
-        _addUserToBookHistory(_bookId);
+        if(!isUserInBooksHistory[_bookId][msg.sender]) {
+            isUserInBooksHistory[_bookId][msg.sender] = true;
+            booksHistory[_bookId].push(msg.sender);
+        }
 
         //update user state 
+        UserLog storage senderLog = usersLog[msg.sender];
+        senderLog.currentBooksMapping[_bookId] = senderLog.currentBooks.length;
         senderLog.currentBooks.push(_bookId);
         senderLog.booksLog[_bookId].push(HistoryItem(block.timestamp, 0));
-        _updateBorrowedBooks(_bookId);
+        
+        //updated availableBooks
+        if(books[_bookId].copies == 0) {
+            availableBooks[_bookId] = false;
+        }
 
         emit BookBorrowed(_bookId, msg.sender);
     }
 
-    function returnBook(uint _bookId) external hasBook(_bookId) {
+    function returnBook(uint _bookId) external bookExist(_bookId) hasBook(_bookId) {
         //update number of copies available
         books[_bookId].copies++;
-        //drop the book from sender current books list
-        _dropBookFromCurrentBooks(_bookId);
+
         //add return timestamp in user log
         UserLog storage senderLog = usersLog[msg.sender];
+        
+        uint lastIndex = senderLog.currentBooks.length - 1;
+        if(lastIndex == 0) {
+            senderLog.currentBooks.pop();
+        }else{
+            //swap and pop last
+            uint position = senderLog.currentBooksMapping[_bookId];
+            senderLog.currentBooks[position] = senderLog.currentBooks[lastIndex];
+            senderLog.currentBooks.pop();
+        }
+        
         uint lastBooLogItemIndex = senderLog.booksLog[_bookId].length - 1;
         HistoryItem storage lastItem = senderLog.booksLog[_bookId][lastBooLogItemIndex];
-        lastItem.returnedTimestamp = block.timestamp; 
+        lastItem.returnedTimestamp = block.timestamp;
+
+        //updated availableBooks
+        availableBooks[_bookId] = true;
 
         emit BookReturned(_bookId, msg.sender);
     }
 
     //public view functions
-    function showAvailableBooks() external view returns(uint[] memory) {
-        
-        uint availableBooksCount = 0;
-        for(uint i = 0; i < books.length; i++) {
-            if(books[i].copies > 0) {
-                availableBooksCount++;
-            }
-        }
-
-        uint[] memory result = new uint[](availableBooksCount);
-        uint resultIndex = 0;
-        for(uint i = 0; i < books.length; i++) {
-            if(books[i].copies > 0) {
-                result[resultIndex]=i;
-                resultIndex++;
-            }
-        }
-        return result;
-    }
 
     function showBookLog(uint _bookId, address _user) external view returns (HistoryItem[] memory) {
         require(usersLog[_user].booksLog[_bookId].length > 0, "No records for this book");
@@ -111,7 +117,7 @@ contract Library is Ownable {
         return usersLog[_user].currentBooks;
     }
 
-    function showBookHistory(address _user) external view returns (uint[] memory) {
+    function showBookHistoryByUser(address _user) external view returns (uint[] memory) {
         return usersLog[_user].borrowedBooks;
     }
 
@@ -120,98 +126,45 @@ contract Library is Ownable {
     }
 
 
-    //private functions and modifiers
+    //modifiers
     modifier hasBook(uint _bookId) {
         UserLog storage senderLog = usersLog[msg.sender];
         uint currentBooksCount = senderLog.currentBooks.length;
-        //check if book is borowed by user
-        bool bookIsInCurrentUserBooks = false;
-        for(uint i = 0; i < currentBooksCount; i++) {
-            if(senderLog.currentBooks[i] == _bookId) {
-                bookIsInCurrentUserBooks = true;
-                break;
+        uint position = senderLog.currentBooksMapping[_bookId];
+        bool hasBookResult = false;
+        
+        if(position == 0) {
+            if(currentBooksCount > 0 && senderLog.currentBooks[0] == _bookId ) {
+                hasBookResult = true;
             }
+        } else {
+            hasBookResult = true;
         }
-
-        require(bookIsInCurrentUserBooks, "This book is not borrowed by you!");
+        
+        require(hasBookResult, "This book is not borrowed by you!");
         _;
     }
 
     modifier doesntHasBook(uint _bookId) {
-        address sender = msg.sender;
-        UserLog storage senderLog = usersLog[sender];
-        
-        //require to not borrow same book if it is already borrowed
-        bool bookIsAlreadyBorrowed = false;
-        for(uint i=0; i < senderLog.currentBooks.length; i++) {
-            if(_bookId == senderLog.currentBooks[i]) {
-                bookIsAlreadyBorrowed = true;
-                break;
+        UserLog storage senderLog = usersLog[msg.sender];
+        uint currentBooksCount = senderLog.currentBooks.length;
+        uint position = senderLog.currentBooksMapping[_bookId];
+        bool hasBookResult = false;
+
+        if(position == 0) {
+            if(currentBooksCount > 0 && senderLog.currentBooks[0] == _bookId ) {
+                hasBookResult = true;
             }
+        } else {
+            hasBookResult = true;
         }
-        require(!bookIsAlreadyBorrowed, "You have this book!");
+        
+        require(!hasBookResult, "You have this book!");
         _;
     }
-
-    function _dropBookFromCurrentBooks(uint _bookId) internal {
-        address sender = msg.sender;
-        UserLog storage senderLog = usersLog[sender];
-
-        if(senderLog.currentBooks.length == 0) {
-            return;
-        }
-
-        uint valueIndex;
-        bool valueFound = false;
-        for(uint i = 0; i < senderLog.currentBooks.length; i++) {
-            if(senderLog.currentBooks[i] == _bookId) {
-                valueIndex = i;
-                valueFound = true;
-                break;
-            }
-        }
-
-        if(valueFound) {
-            //assign last element value to the given element value
-            senderLog.currentBooks[valueIndex] = senderLog.currentBooks[senderLog.currentBooks.length - 1];
-            //pop last element
-            senderLog.currentBooks.pop();
-        }
-    }
-
-    function _updateBorrowedBooks(uint _bookId) internal {
-        UserLog storage senderLog = usersLog[msg.sender];
-
-        //add to borrowedBooks
-        bool bookIsAlreadyIn = false;
-        for(uint i = 0; i < senderLog.borrowedBooks.length; i++) {
-            if(senderLog.borrowedBooks[i] == _bookId) {
-                bookIsAlreadyIn = true;
-                break;
-            }
-        }
-
-        if(!bookIsAlreadyIn) {
-            senderLog.borrowedBooks.push(_bookId);
-        }
-    }
-
-    function _addUserToBookHistory(uint _bookId) internal {
-        //check if book has history records
-        if(booksHistory[_bookId].length == 0) {
-            booksHistory[_bookId].push(msg.sender);
-        } else {
-            //check if user is in book history
-            bool userIsAlreadyIn = false;
-            for(uint i=0; i < booksHistory[_bookId].length; i++) {
-                if(msg.sender == booksHistory[_bookId][i]) {
-                    userIsAlreadyIn = true;
-                    break;
-                }
-            }
-            if(!userIsAlreadyIn) {
-                booksHistory[_bookId].push(msg.sender);
-            }
-        }
+    
+    modifier bookExist(uint _bookId) {
+        require((booksCount - 1) >= _bookId, "This book doesn't exist!");
+        _;
     }
 }

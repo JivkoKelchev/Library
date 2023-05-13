@@ -10,27 +10,33 @@ describe("Library", function () {
 
     const Library = await ethers.getContractFactory("Library");
     const library = await Library.deploy();
+    
+    //add four books for tests
+    await library.addBook("test0", "test", 1);
+    await library.addBook("test1", "test", 1);
+    await library.addBook("test2", "test", 1);
+    await library.addBook("test3", "test", 4);
 
     return { library, owner, otherAccount };
   }
 
   describe("Deployment", function () {
-    it("Should create 4 books", async function () {
-      const { library } = await loadFixture(deploy);
-      expect((await library.books(0))[0]).to.equal("test0");
-      expect((await library.books(1))[0]).to.equal("test1");
-      expect((await library.books(2))[0]).to.equal("test2");
-      expect((await library.books(3))[0]).to.equal("test3");
-      
-    });
-
-    it("The forth book should have 4 copies", async function () {
-      const { library } = await loadFixture(deploy);
-      expect((await library.books(0))[2]).to.equal(1);
-      expect((await library.books(1))[2]).to.equal(1);
-      expect((await library.books(2))[2]).to.equal(1);
-      expect((await library.books(3))[2]).to.equal(4);
-    })
+    // it("Should create 4 books", async function () {
+    //   const { library } = await loadFixture(deploy);
+    //   expect((await library.books(0))[0]).to.equal("test0");
+    //   expect((await library.books(1))[0]).to.equal("test1");
+    //   expect((await library.books(2))[0]).to.equal("test2");
+    //   expect((await library.books(3))[0]).to.equal("test3");
+    //  
+    // });
+    //
+    // it("The forth book should have 4 copies", async function () {
+    //   const { library } = await loadFixture(deploy);
+    //   expect((await library.books(0))[2]).to.equal(1);
+    //   expect((await library.books(1))[2]).to.equal(1);
+    //   expect((await library.books(2))[2]).to.equal(1);
+    //   expect((await library.books(3))[2]).to.equal(4);
+    // })
   });
 
   describe("Add book", function () {
@@ -121,7 +127,7 @@ describe("Library", function () {
   describe("Retrun book", function () {
     it("Should not return non borrowed book", async function () {
       const { library } = await loadFixture(deploy);
-      await expect(library.returnBook(69)).to.be.revertedWith(
+      await expect(library.returnBook(0)).to.be.revertedWith(
           "This book is not borrowed by you!"
       );
     })
@@ -148,14 +154,14 @@ describe("Library", function () {
     it("Shuld remove form available after borrow", async function () {
       const {library} = await loadFixture(deploy);
       await library.borrowBook(0);
-      expect((await library.showAvailableBooks())[0]).to.equal(1);
+      expect(await library.availableBooks(0)).to.equal(false);
     })
 
     it("Shuld remove form available after borrow", async function () {
       const {library} = await loadFixture(deploy);
       await library.borrowBook(0);
       await library.returnBook(0);
-      expect((await library.showAvailableBooks())[0]).to.equal(0);
+      expect(await library.availableBooks(0)).to.equal(true);
     })
     
   })
