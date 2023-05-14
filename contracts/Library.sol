@@ -8,29 +8,30 @@ contract Library is Ownable {
 
     //books data
     uint public booksCount;
-    mapping(uint => Book) public books; 
+    mapping(bytes32 => Book) public books; 
     //user data
     mapping(address => UserLog) usersLog; //keep track of every transaction that given user have
     //book history
-    mapping(uint => mapping(address => bool)) isUserInBooksHistory; //keep track of every user that borrow given book
-    mapping(uint =>address[]) booksHistory;
+    mapping(bytes32 => mapping(address => bool)) isUserInBooksHistory; //keep track of every user that borrow given book
+    mapping(bytes32 =>address[]) booksHistory;
     //availableBooks
-    mapping(uint => bool) public availableBooks; //todo: keep track of available books without loop
+    mapping(bytes32 => int) public availableBooksMapping; //keep track of available books without loop
+    bytes32[] availableBooks;
     
     //book data
     struct Book {
-        string name;
+        string title;
         string author;
         uint copies;
     }
 
     //user current state + history
     struct UserLog {
-        mapping(uint => uint) currentBooksMapping; //maps bookId=> index in currentBooks, used to pop items without loop
-        uint[] currentBooks; //currently borrowed books
-        mapping(uint => bool) borrowedBooksMapping;// bookId=> is this book was borrowed
-        uint[] borrowedBooks; //every borrowed book
-        mapping(uint => HistoryItem[]) booksLog; //log timestamps foreach book borrowed/returned
+        mapping(bytes32 => uint) currentBooksMapping; //maps bookId=> index in currentBooks, used to pop items without loop
+        bytes32[] currentBooks; //currently borrowed books
+        mapping(bytes32 => bool) borrowedBooksMapping;// bookId=> is this book was borrowed
+        bytes32[] borrowedBooks; //every borrowed book
+        mapping(bytes32 => HistoryItem[]) booksLog; //log timestamps foreach book borrowed/returned
     }
 
     struct HistoryItem {
@@ -39,23 +40,25 @@ contract Library is Ownable {
     }
 
     //events
-    event LogBookAdded(uint _bookId, uint _copies);
-    event LogBookBorrowed(uint _bookId, address _user);
-    event LogBookReturned(uint _bookId, address _user);
+    event LogBookAdded(bytes32 _bookId, uint _copies);
+    event LogBookBorrowed(bytes32 _bookId, address _user);
+    event LogBookReturned(bytes32 _bookId, address _user);
 
     constructor() {
         booksCount=0;
     }
 
     //public state functions
-    function addBook( string calldata _name, string calldata _author, uint8 _copies) external onlyOwner {
-        books[booksCount] = Book(_name, _author, _copies);
-        availableBooks[booksCount] = true;
-        emit LogBookAdded((booksCount), _copies);
+    function addBook( string calldata _title, string calldata _author, uint8 _copies) external onlyOwner {
+        bytes32 bookId = keccak256(abi.encodePacked(_title));
+        books[bookId] = Book(_title, _author, _copies);
+        availableBooks.push(bookId);
+        availableBooksMapping[bookId] = int(booksCount);
+        emit LogBookAdded(bookId, _copies);
         booksCount++;
     }
 
-    function borrowBook(uint _bookId) external bookExist(_bookId) doesntHasBook(_bookId) {
+    function borrowBook(bytes32 _bookId) external bookExist(_bookId) doesntHasBook(_bookId) {
         //check if book is available
         require(books[_bookId].copies>0, "This book is not available!");
         //update copies
@@ -79,13 +82,19 @@ contract Library is Ownable {
         
         //updated availableBooks
         if(books[_bookId].copies == 0) {
-            availableBooks[_bookId] = false;
+            uint position = uint(availableBooksMapping[_bookId]);
+            uint availableBooksCount = availableBooks.length;
+            if(availableBooksCount > 1){
+                availableBooks[position] = availableBooks[availableBooksCount - 1];
+            }
+            availableBooks.pop();
+            availableBooksMapping[_bookId] = -1;
         }
 
         emit LogBookBorrowed(_bookId, msg.sender);
     }
 
-    function returnBook(uint _bookId) external bookExist(_bookId) hasBook(_bookId) {
+    function returnBook(bytes32 _bookId) external bookExist(_bookId) hasBook(_bookId) {
         //update number of copies available
         books[_bookId].copies++;
 
@@ -107,32 +116,37 @@ contract Library is Ownable {
         lastItem.returnedTimestamp = block.timestamp;
 
         //updated availableBooks
-        availableBooks[_bookId] = true;
-
+        if(availableBooksMapping[_bookId] == -1) {
+            availableBooks.push(_bookId);
+            availableBooksMapping[_bookId] = int(availableBooks.length - 1);
+        }
         emit LogBookReturned(_bookId, msg.sender);
     }
 
     //public view functions
-    function showBookLog(uint _bookId, address _user) external view returns (HistoryItem[] memory) {
+    function showBookLog(bytes32 _bookId, address _user) external view returns (HistoryItem[] memory) {
         require(usersLog[_user].booksLog[_bookId].length > 0, "No records for this book");
         return usersLog[_user].booksLog[_bookId];
     }
 
-    function showUserCurrentBooks(address _user) external view returns (uint[] memory) {
+    function showUserCurrentBooks(address _user) external view returns (bytes32[] memory) {
         return usersLog[_user].currentBooks;
     }
 
-    function showBookHistoryByUser(address _user) external view returns (uint[] memory) {
+    function showBookHistoryByUser(address _user) external view returns (bytes32[] memory) {
         return usersLog[_user].borrowedBooks;
     }
 
-    function showBookHistory(uint _bookId) external view returns (address[] memory) {
+    function showBookHistory(bytes32 _bookId) external view returns (address[] memory) {
         return booksHistory[_bookId];
     }
 
+    function showAvailableBooks() external view returns(bytes32[] memory) {
+        return availableBooks;
+    }
 
     //modifiers
-    modifier hasBook(uint _bookId) {
+    modifier hasBook(bytes32 _bookId) {
         UserLog storage senderLog = usersLog[msg.sender];
         uint currentBooksCount = senderLog.currentBooks.length;
         uint position = senderLog.currentBooksMapping[_bookId];
@@ -150,7 +164,7 @@ contract Library is Ownable {
         _;
     }
 
-    modifier doesntHasBook(uint _bookId) {
+    modifier doesntHasBook(bytes32 _bookId) {
         UserLog storage senderLog = usersLog[msg.sender];
         uint currentBooksCount = senderLog.currentBooks.length;
         uint position = senderLog.currentBooksMapping[_bookId];
@@ -168,8 +182,8 @@ contract Library is Ownable {
         _;
     }
     
-    modifier bookExist(uint _bookId) {
-        require((booksCount - 1) >= _bookId, "This book doesn't exist!");
+    modifier bookExist(bytes32 _bookId) {
+        require(bytes(books[_bookId].title).length != 0, "This book doesn't exist!");
         _;
     }
 }
