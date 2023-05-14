@@ -51,7 +51,7 @@ describe("Library", function () {
       const { library } = await loadFixture(deploy);
       
       await expect(library.addBook("The mighty test from hardhat!", "test", 69))
-          .to.emit(library, "BookAdded")
+          .to.emit(library, "LogBookAdded")
           .withArgs(4, 69); // We accept id of the book to be 4 and copies 69
     })
   });
@@ -118,7 +118,7 @@ describe("Library", function () {
     it("Should emit event on book borrowed", async function () {
       const { library, owner } = await loadFixture(deploy);
       await expect(library.borrowBook(0))
-          .to.emit(library, "BookBorrowed")
+          .to.emit(library, "LogBookBorrowed")
           .withArgs(0, owner.address);
     })
     
@@ -143,7 +143,7 @@ describe("Library", function () {
       const { library, owner } = await loadFixture(deploy);
       await library.borrowBook(0);
       await expect(library.returnBook(0))
-          .to.emit(library, "BookReturned")
+          .to.emit(library, "LogBookReturned")
           .withArgs(0, owner.address);
     })
     

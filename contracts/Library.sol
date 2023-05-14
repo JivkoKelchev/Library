@@ -28,7 +28,8 @@ contract Library is Ownable {
     struct UserLog {
         mapping(uint => uint) currentBooksMapping; //maps bookId=> index in currentBooks, used to pop items without loop
         uint[] currentBooks; //currently borrowed books
-        uint[] borrowedBooks; //todo: keep track of all books that was borrowed (without loop)
+        mapping(uint => bool) borrowedBooksMapping;// bookId=> is this book was borrowed
+        uint[] borrowedBooks; //every borrowed book
         mapping(uint => HistoryItem[]) booksLog; //log timestamps foreach book borrowed/returned
     }
 
@@ -38,9 +39,9 @@ contract Library is Ownable {
     }
 
     //events
-    event BookAdded(uint _bookId, uint _copies);
-    event BookBorrowed(uint _bookId, address _user);
-    event BookReturned(uint _bookId, address _user);
+    event LogBookAdded(uint _bookId, uint _copies);
+    event LogBookBorrowed(uint _bookId, address _user);
+    event LogBookReturned(uint _bookId, address _user);
 
     constructor() {
         booksCount=0;
@@ -50,7 +51,7 @@ contract Library is Ownable {
     function addBook( string calldata _name, string calldata _author, uint8 _copies) external onlyOwner {
         books[booksCount] = Book(_name, _author, _copies);
         availableBooks[booksCount] = true;
-        emit BookAdded((booksCount), _copies);
+        emit LogBookAdded((booksCount), _copies);
         booksCount++;
     }
 
@@ -65,10 +66,15 @@ contract Library is Ownable {
             booksHistory[_bookId].push(msg.sender);
         }
 
-        //update user state 
         UserLog storage senderLog = usersLog[msg.sender];
+        //update current user books 
         senderLog.currentBooksMapping[_bookId] = senderLog.currentBooks.length;
         senderLog.currentBooks.push(_bookId);
+        //update borrowed books
+        if(!senderLog.borrowedBooksMapping[_bookId]) {
+            senderLog.borrowedBooksMapping[_bookId] = true;
+            senderLog.borrowedBooks.push(_bookId);
+        }
         senderLog.booksLog[_bookId].push(HistoryItem(block.timestamp, 0));
         
         //updated availableBooks
@@ -76,7 +82,7 @@ contract Library is Ownable {
             availableBooks[_bookId] = false;
         }
 
-        emit BookBorrowed(_bookId, msg.sender);
+        emit LogBookBorrowed(_bookId, msg.sender);
     }
 
     function returnBook(uint _bookId) external bookExist(_bookId) hasBook(_bookId) {
@@ -103,11 +109,10 @@ contract Library is Ownable {
         //updated availableBooks
         availableBooks[_bookId] = true;
 
-        emit BookReturned(_bookId, msg.sender);
+        emit LogBookReturned(_bookId, msg.sender);
     }
 
     //public view functions
-
     function showBookLog(uint _bookId, address _user) external view returns (HistoryItem[] memory) {
         require(usersLog[_user].booksLog[_bookId].length > 0, "No records for this book");
         return usersLog[_user].booksLog[_bookId];
