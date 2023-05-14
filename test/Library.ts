@@ -47,8 +47,7 @@ describe("Library", function () {
   describe("Add book", function () {
     it("Should add to books array", async function () {
       const { library } = await loadFixture(deploy);
-      const encoded = ethers.utils.solidityPack(['string'], ["The mighty test from hardhat!"]);
-      const bookId = ethers.utils.keccak256(encoded);
+      const bookId = getBookId("The mighty test from hardhat!");
       await library.addBook("The mighty test from hardhat!", "test", 2);
       expect((await library.books(bookId))[0]).to.equal("The mighty test from hardhat!");
       expect((await library.books(bookId))[2]).to.equal(2);
@@ -62,8 +61,7 @@ describe("Library", function () {
     
     it("Should emit event on book added", async function () {
       const { library } = await loadFixture(deploy);
-      const encoded = ethers.utils.solidityPack(['string'], ["The mighty test from hardhat!"]);
-      const bookId = ethers.utils.keccak256(encoded);
+      const bookId = getBookId("The mighty test from hardhat!");
       await expect(library.addBook("The mighty test from hardhat!", "test", 69))
           .to.emit(library, "LogBookAdded")
           .withArgs(bookId, 69); // We accept id of the book to be 4 and copies 69
@@ -73,8 +71,7 @@ describe("Library", function () {
   describe("Borrow book", function () {
     it("Should not borrow non existing book", async function () {
       const { library } = await loadFixture(deploy);
-      const encoded = ethers.utils.solidityPack(['string'], ["The mighty test from hardhat!"]);
-      const bookId = ethers.utils.keccak256(encoded);
+      const bookId = getBookId("The mighty test from hardhat!");
       await expect(library.borrowBook(bookId)).to.be.revertedWith(
           "This book doesn't exist!"
       );
@@ -82,8 +79,7 @@ describe("Library", function () {
     
     it("Should not borrow book you have", async function () {
       const { library } = await loadFixture(deploy);
-      const encoded = ethers.utils.solidityPack(['string'], ["test3"]);
-      const bookId = ethers.utils.keccak256(encoded);
+      const bookId = getBookId("test3");
       await library.borrowBook(bookId);
       await expect(library.borrowBook(bookId)).to.be.revertedWith(
           "You have this book!"
@@ -92,8 +88,7 @@ describe("Library", function () {
     
     it("Should not borrow books with 0 copies left", async function () {
       const { library, otherAccount} = await loadFixture(deploy);
-      const encoded = ethers.utils.solidityPack(['string'], ["test0"]);
-      const bookId = ethers.utils.keccak256(encoded);
+      const bookId = getBookId("test0");
       await library.borrowBook(bookId);
       await expect(library.connect(otherAccount).borrowBook(bookId)).to.be.revertedWith(
           "This book is not available!"
@@ -102,16 +97,14 @@ describe("Library", function () {
     
     it("Should update copies", async function (){
       const { library } = await loadFixture(deploy);
-      const encoded = ethers.utils.solidityPack(['string'], ["test0"]);
-      const bookId = ethers.utils.keccak256(encoded);
+      const bookId = getBookId("test0");
       await library.borrowBook(bookId);
       expect((await library.books(bookId))[2]).to.equal(0);
     })
     
     it("Should update book history (when book history is empty)", async function () {
       const { library, owner } = await loadFixture(deploy);
-      const encoded = ethers.utils.solidityPack(['string'], ["test0"]);
-      const bookId = ethers.utils.keccak256(encoded);
+      const bookId = getBookId("test0");
       await library.borrowBook(bookId);
       const bookHistory = await library.showBookHistory(bookId);
       expect(bookHistory[0]).to.equal(owner.address);
@@ -119,8 +112,7 @@ describe("Library", function () {
 
     it("Should update book history", async function () {
       const { library, otherAccount} = await loadFixture(deploy);
-      const encoded = ethers.utils.solidityPack(['string'], ["test0"]);
-      const bookId = ethers.utils.keccak256(encoded);
+      const bookId = getBookId("test0");
       await library.borrowBook(bookId);
       await library.returnBook(bookId);
       await library.connect(otherAccount).borrowBook(bookId);
