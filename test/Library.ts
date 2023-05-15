@@ -45,6 +45,12 @@ describe("Library", function () {
   });
 
   describe("Add book", function () {
+    it("Should add only owner", async function () {
+      const { library, otherAccount} = await loadFixture(deploy);
+      expect(library.connect(otherAccount).addBook("The mighty test from hardhat!", "test", 2)).to.be.revertedWith(
+          "Ownable: caller is not the owner");
+    });
+    
     it("Should add to books array", async function () {
       const { library } = await loadFixture(deploy);
       const bookId = getBookId("The mighty test from hardhat!");
@@ -146,6 +152,14 @@ describe("Library", function () {
   });
   
   describe("Retrun book", function () {
+    it("Should retrurn only existing books", async function () {
+      const { library } = await loadFixture(deploy);
+      const bookId = getBookId("The mighty test from hardhat!");
+      await expect(library.returnBook(bookId)).to.be.revertedWith(
+          "This book doesn't exist!"
+      );
+    });
+    
     it("Should not return non borrowed book", async function () {
       const { library } = await loadFixture(deploy);
       const bookId = getBookId("test0");
@@ -190,6 +204,53 @@ describe("Library", function () {
       await library.returnBook(bookId);
       const books = await library.showAvailableBooks();
       expect(books.length).to.equal(4);
+    })
+    
+  })
+  
+  describe("Show books history by usesr", function () {
+    it("Should receive all unique books that user was borrowed", async function () {
+      const { library, owner } = await loadFixture(deploy);
+      const bookId = getBookId("test0");
+      await library.borrowBook(bookId);
+      const test1 = (await library.showBookHistoryByUser(owner.address))[0]; 
+      expect(test1).to.be.equal(bookId)
+      await library.returnBook(bookId);
+      await library.borrowBook(bookId);
+      const test2 = (await library.showBookHistoryByUser(owner.address)).length;
+      expect(test2).to.be.equal(1)
+    })
+  })
+  
+  describe("Show book log", function () {
+    it("Should add log when borrow", async function () {
+      const { library, owner } = await loadFixture(deploy);
+      const bookId = getBookId("test0");
+      await library.borrowBook(bookId);
+      const logs = (await library.showBookLog(bookId, owner.address))
+      const log = logs[0];
+      expect(logs.length).to.be.equal(1);
+      expect(log.borrowedTimestamp).to.be.gt(0);
+      expect(log.returnedTimestamp).to.be.equal(0);
+    })
+
+    it("Should add log when return", async function () {
+      const { library, owner } = await loadFixture(deploy);
+      const bookId = getBookId("test0");
+      await library.borrowBook(bookId);
+      await library.returnBook(bookId);
+      const logs = (await library.showBookLog(bookId, owner.address))
+      const log = logs[0];
+      expect(logs.length).to.be.equal(1);
+      expect(log.borrowedTimestamp).to.be.gt(0);
+      expect(log.returnedTimestamp).to.be.gt(0);
+    })
+
+    it("Should fail when log is not existing", async function () {
+      const { library, owner } = await loadFixture(deploy);
+      const bookId = getBookId("test0");
+      expect(library.showBookLog(bookId, owner.address)).to.be.revertedWith(
+          "No records for this book")
     })
     
   })
