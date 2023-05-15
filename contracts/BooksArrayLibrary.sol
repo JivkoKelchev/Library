@@ -17,18 +17,16 @@ library BooksArrayLibrary {
     }
     
     function removeBook(BooksArray storage booksArray, bytes32 _bookId) internal {
-        if(booksArray.inArray[_bookId]){
-            booksArray.inArray[_bookId] = false;
-            if(booksArray.array.length > 1){
-                uint lastIndex = booksArray.array.length - 1;
-                bytes32 lastBook = booksArray.array[lastIndex];
-                uint position = booksArray.position[_bookId];
-                booksArray.array[position] = lastBook;
-                booksArray.array.pop();
-                booksArray.position[lastBook] = position;
-            }else{
-                booksArray.array.pop();
-            }
+        booksArray.inArray[_bookId] = false;
+        if(booksArray.array.length > 1){
+            uint lastIndex = booksArray.array.length - 1;
+            bytes32 lastBook = booksArray.array[lastIndex];
+            uint position = booksArray.position[_bookId];
+            booksArray.array[position] = lastBook;
+            booksArray.array.pop();
+            booksArray.position[lastBook] = position;
+        }else{
+            booksArray.array.pop();
         }
     }
     

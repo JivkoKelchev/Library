@@ -132,7 +132,7 @@ describe("Library", function () {
     
   });
   
-  describe("Retrun book", function () {
+  describe("Return book", function () {
     it("Should retrurn only existing books", async function () {
       const { library } = await loadFixture(deploy);
       const bookId = getBookId("The mighty test from hardhat!");
@@ -170,7 +170,7 @@ describe("Library", function () {
   
   describe("Show available books", function () {
     
-    it("Shuld remove form available after borrow", async function () {
+    it("Should remove form available after borrow", async function () {
       const {library} = await loadFixture(deploy);
       const bookId = getBookId("test0");
       await library.borrowBook(bookId);
@@ -178,7 +178,7 @@ describe("Library", function () {
       expect(books.length).to.equal(3);
     })
 
-    it("Shuld remove form available after borrow", async function () {
+    it("Should remove form available after borrow", async function () {
       const {library} = await loadFixture(deploy);
       const bookId = getBookId("test0");
       await library.borrowBook(bookId);
@@ -230,7 +230,7 @@ describe("Library", function () {
     it("Should fail when log is not existing", async function () {
       const { library, owner } = await loadFixture(deploy);
       const bookId = getBookId("test0");
-      expect(library.showBookLog(bookId, owner.address)).to.be.revertedWith(
+      await expect(library.showBookLog(bookId, owner.address)).to.be.revertedWith(
           "No records for this book")
     })
     
