@@ -44,10 +44,6 @@ contract Library is Ownable {
     event LogBookBorrowed(bytes32 _bookId, address _user);
     event LogBookReturned(bytes32 _bookId, address _user);
 
-    constructor() {
-        booksCount=0;
-    }
-
     //public state functions
     function addBook( string calldata _title, string calldata _author, uint8 _copies) external onlyOwner {
         bytes32 bookId = keccak256(abi.encodePacked(_title));

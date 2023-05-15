@@ -25,25 +25,6 @@ describe("Library", function () {
     return ethers.utils.keccak256(encoded);
   }
 
-  describe("Deployment", function () {
-    // it("Should create 4 books", async function () {
-    //   const { library } = await loadFixture(deploy);
-    //   expect((await library.books(0))[0]).to.equal("test0");
-    //   expect((await library.books(1))[0]).to.equal("test1");
-    //   expect((await library.books(2))[0]).to.equal("test2");
-    //   expect((await library.books(3))[0]).to.equal("test3");
-    //  
-    // });
-    //
-    // it("The forth book should have 4 copies", async function () {
-    //   const { library } = await loadFixture(deploy);
-    //   expect((await library.books(0))[2]).to.equal(1);
-    //   expect((await library.books(1))[2]).to.equal(1);
-    //   expect((await library.books(2))[2]).to.equal(1);
-    //   expect((await library.books(3))[2]).to.equal(4);
-    // })
-  });
-
   describe("Add book", function () {
     it("Should add only owner", async function () {
       const { library, otherAccount} = await loadFixture(deploy);
