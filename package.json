@@ -4,7 +4,7 @@
   "description": "\"Book library smart contract\"",
   "main": "index.js",
   "scripts": {
-    "npx" : "npx",
+    "npx": "npx",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "zhkelchev",
@@ -13,5 +13,8 @@
     "@nomicfoundation/hardhat-toolbox": "^2.0.0",
     "@openzeppelin/contracts": "^4.8.3",
     "hardhat": "^2.14.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.0.3"
   }
 }
