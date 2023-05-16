@@ -1,17 +1,17 @@
-import {ethers, config} from "hardhat";
+import { ethers, config } from "hardhat";
+import { HttpNetworkConfig} from "hardhat/types";
 
-export async function main() {
-    const networkName = 'goerli';
+export async function main(networkName: string) {
+    //read configurations
     const networkConfig = config.networks;
     const desiredNetwork = networkConfig[networkName];
-    const {url, accounts} = desiredNetwork;
+    const {url, accounts} = desiredNetwork as HttpNetworkConfig;
     const provider = new ethers.providers.JsonRpcProvider(url);
-    const signer = new ethers.Wallet(accounts[0], provider);
+    const signer = new ethers.Wallet((accounts as string[])[0], provider);
     const networkInfo = await provider.getNetwork();
+    //deploy
     console.log("Deploying to network:", networkInfo.name);
-
-    console.log("Deploying contracts with the account:", signer.address); // We are printing the address of the deployer
-
+    console.log("Deploying contracts with the account:", signer.address);
     const LibraryFactory = await ethers.getContractFactory("Library");
     const library = await LibraryFactory.connect(signer).deploy();
     await library.deployed();

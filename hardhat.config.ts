@@ -43,15 +43,15 @@ task("deploy-library-pk", "Deploys contract with pk")
     });
 
 task("deploy-library-sepolia", "Deploys contract on sepolia")
-    .setAction(async ({ privateKey }) => {
-      const { main } = await lazyImport("./scripts/deploy-library-sepolia");
-      await main(privateKey);
+    .setAction(async () => {
+      const { main } = await lazyImport("./scripts/deploy-library-remote");
+      await main('sepolia');
     });
 
 task("deploy-library-goerli", "Deploys contract on goerli")
-    .setAction(async ({ privateKey }) => {
-        const { main } = await lazyImport("./scripts/deploy-library-goerli");
-        await main(privateKey);
+    .setAction(async () => {
+        const { main } = await lazyImport("./scripts/deploy-library-remote");
+        await main('goerli');
     });
 
 subtask("print", "Prints a message")
