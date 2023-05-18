@@ -1,15 +1,15 @@
 import { loadFixture } from "@nomicfoundation/hardhat-network-helpers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import {Library} from "../typechain-types";
+import { Library } from "../typechain-types/contracts";
 
 describe("Library", function () {
   async function deploy() {
     // Contracts are deployed using the first signer/account by default
     const [owner, otherAccount] = await ethers.getSigners();
 
-    const Library = await ethers.getContractFactory("Library");
-    const library = await Library.deploy();
+    const libraryFactory = await ethers.getContractFactory("Library");
+    const library = (await libraryFactory.deploy()) as Library;
     
     //add four books for tests
     await library.addBook("test0", "test", 1);
