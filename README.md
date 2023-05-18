@@ -35,9 +35,9 @@ Here is the list of functions and events:
 * function showUserCurrentBooks(address _user) external view returns (uint[] memory)
 * function showBookLog(bytes32 _bookId, address _user) external view returns (HistoryItem[] memory)
 
-## Contract validation link \
+## Contract validation link
 Successfully verified contract Library on Etherscan. \
-https://sepolia.etherscan.io/address/0x7601e2938E4b0a204F0EBc9e6E9af9ac21D5F655#code
+https://sepolia.etherscan.io/address/0xf071786c9Ab0585d64b0E53d7d027B3E30310324#code
 
 ## License
 [MIT License];
