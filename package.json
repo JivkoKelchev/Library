@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "npx": "npx",
+    "deploy-local": "npx hardhat run --network localhost ./scripts/deploy-library.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "zhkelchev",
