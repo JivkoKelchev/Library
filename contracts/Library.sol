@@ -46,7 +46,11 @@ contract Library is Ownable {
 
     //public state functions
     function addBook( string calldata _title, string calldata _author, uint8 _copies) external onlyOwner {
+        require(bytes(_title).length>0, "Title should not be empty!");
+        require(bytes(_author).length>0, "Author should not be empty!");
+        require(_copies>0, "Copies should be more than 0!");
         bytes32 bookId = keccak256(abi.encodePacked(_title));
+        require(books[bookId].copies == 0, "This book already available!");
         books[bookId] = Book(_title, _author, _copies);
         availableBooks.addBook(bookId);
         booksCount++;

@@ -32,6 +32,28 @@ describe("Library", function () {
           "Ownable: caller is not the owner");
     });
     
+    it("Should not add books with empty data", async function () {
+      const { library } = await loadFixture(deploy);
+      await expect(library.addBook("", "", 0)).to.be.revertedWith(
+          "Title should not be empty!"
+      );
+
+      await expect(library.addBook("test", "", 0)).to.be.revertedWith(
+          "Author should not be empty!"
+      );
+
+      await expect(library.addBook("test", "test", 0)).to.be.revertedWith(
+          "Copies should be more than 0!"
+      );
+    })
+
+    it("Should not add books with same title", async function () {
+      const { library } = await loadFixture(deploy);
+      await expect(library.addBook("test0", "test", 4)).to.be.revertedWith(
+          "This book already available!"
+      );
+    })
+    
     it("Should add to books array", async function () {
       const { library } = await loadFixture(deploy);
       const bookId = getBookId("The mighty test from hardhat!");
